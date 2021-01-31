@@ -1,5 +1,5 @@
 # Node.js ServerSide Frameworks
-![serversInfo](https://user-images.githubusercontent.com/56661529/106377860-59c8f400-63e3-11eb-93af-0eda2378dc4f.png)
+![serversImg](https://user-images.githubusercontent.com/56661529/106383160-a0c8e080-6407-11eb-905c-1bf4c9797842.png)
 
 - Node.js
 - ExpressJS

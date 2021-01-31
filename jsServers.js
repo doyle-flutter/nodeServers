@@ -12,9 +12,21 @@ var controller = ({path, data, type}) => {
     if(type ==='json') return {path, data};
     return `<h2>${data}</h2><p>${data}</p>`
 };
+var dynamicPathController = ({data}) => ({data});
 
 // Node.js
+var fs = require('fs'),
+    path = require('path');
 var app = require('http').createServer((req,res) => {
+    if(req.url == '/favicon.ico') return;
+    if(req.url.split('/')[1] === 'dynamicPath'){
+        if(req.url.split('/')[2]!= undefined){
+            res.writeHead(200, {'Content-Type':'application/json'});
+            return res.end(`data : ${req.url.split('/')[2]}`);    
+        }
+        res.writeHead(200, {'Content-Type':'application/json'});
+        return res.end(`data : dy`);
+    }
     switch(req.url){
         default : {
             res.writeHead(200, {'Content-Type':'application/json'});
@@ -26,60 +38,7 @@ var app = require('http').createServer((req,res) => {
         }
         case '/list' : {
             res.writeHead(200, {"Content-Type": 'text/html'});
-            return res.end(`
-            <div>
-                <img src="https://user-images.githubusercontent.com/56661529/106377860-59c8f400-63e3-11eb-93af-0eda2378dc4f.png" alt="info" />
-                <div>
-                    <h3>Node.js</h3>
-                    <ul>
-                        <li><a href="http://localhost:3020">JSON</a></li>
-                        <li><a href="http://localhost:3020/sub">HTML</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h3>ExpressJS</h3>
-                    <ul>
-                        <li><a href="http://localhost:3030">JSON</a></li>
-                        <li><a href="http://localhost:3030/sub">HTML</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h3>Koa</h3>
-                    <ul>
-                        <li><a href="http://localhost:3040">JSON</a></li>
-                        <li><a href="http://localhost:3040/sub">HTML</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h3>FeathersJS</h3>
-                    <ul>
-                        <li><a href="http://localhost:3050">JSON</a></li>
-                        <li><a href="http://localhost:3050/sub">HTML</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h3>RestifyJS</h3>
-                    <ul>
-                        <li><a href="http://localhost:3060">JSON</a></li>
-                        <li><a href="http://localhost:3060/sub">HTML</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h3>KeystoneJS</h3>
-                    <ul>
-                        <li><a href="http://localhost:3070">JSON</a></li>
-                        <li><a href="http://localhost:3070/sub">HTML</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h3>HapiJS</h3>
-                    <ul>
-                        <li><a href="http://localhost:3080">JSON</a></li>
-                        <li><a href="http://localhost:3080/sub">HTML</a></li>
-                    </ul>
-                </div>
-            </div>
-            `);
+            return res.end(fs.readFileSync(path.join(__dirname, './intro.html')));
         }
     }
 });
@@ -92,20 +51,25 @@ var express = require('express'),
 expressApp.listen(3030, _ => console.log("ExpressJS :3030"));
 expressApp.get('/', (req,res) => res.json( controller({path: '/', data: "ExpressJS", type: 'json'}) ));
 expressApp.get('/sub', (req,res) => res.send( controller({path: '/sub', data: "ExpressJS", type: ''}) ));
+expressApp.get('/dynamicPath/:data', (req,res) => res.json( dynamicPathController({data: req.params.data}) ));
 
 //  [ KoaJS]
 var Koa = require('koa'), 
-    koaApp = new Koa();
+    koaApp = new Koa(),
+    KoaRouter = require('koa-router'),
+    koaRouter = KoaRouter();
 koaApp.listen(3040, _ => console.log("KOA :3040"));
+koaRouter.get('/dynamicPath/:data', (ctx, next) => ctx.body = dynamicPathController({data: ctx.params.data}));
+koaApp.use(koaRouter.routes());
 koaApp.use(async ctx => {
-  switch(ctx.path){
-      default : {
-        return ctx.body = controller({path: '/', data: "KoaJS", type: 'json'});
-      }
-      case '/sub' : {
-        return ctx.body = controller({path: '/sub', data: "KoaJS", type: ''}) ;
-      }
-  }
+    switch(ctx.path){
+        default : {
+            return ctx.body = controller({path: '/', data: "KoaJS", type: 'json'});
+        }
+        case '/sub' : {
+            return ctx.body = controller({path: '/sub', data: "KoaJS", type: ''}) ;
+        }
+    }
 });
 
 //  [ FeathersJS ]
@@ -118,6 +82,7 @@ feathersApp.use(fExpress.urlencoded({ extended: true }));
 feathersApp.configure(fExpress.rest());
 feathersApp.get('/', (req,res) => res.json( controller({path: '/', data: "FeathersJS", type: 'json'}) ));
 feathersApp.get('/sub', (req,res) => res.send( controller({path: '/sub', data: "FeathersJS", type: ''}) ));
+feathersApp.get('/dynamicPath/:data', (req,res) => res.json( dynamicPathController({data: req.params.data}) ));
 
 //  [ RestifyJS]
 var restify = require('restify'),
@@ -128,13 +93,17 @@ restifyServer.get('/sub', (req,res) => {
     res.setHeader("Content-Type","text/html");
     return res.sendRaw( controller({path: '/sub', data: "RestifyJS", type: ''}) );
 });
+restifyServer.get('/dynamicPath/:data', (req,res) => res.json( dynamicPathController({data: req.params.data}) ));
 
 //  [ KeystoneJS ]
 var keystone = require('keystone');
+const url = require('keystone/fields/types/url/UrlType');
+const { Url } = require('keystone/lib/fieldTypes');
 keystone.init({'cookie secret' : 'secure string goes here',port: 3070});
 keystone.set('routes', (app) => {
   app.get('/', (req,res) => res.json( controller({path: '/', data: "KeystoneJS", type: 'json'}) ));
   app.get('/sub', (req,res) => res.send( controller({path: '/sub', data: "KeystoneJS", type: ''}) ));
+  app.get('/dynamicPath/:data', (req,res) => res.json( dynamicPathController({data: req.params.data}) ));
 });
 keystone.start();
 
@@ -152,6 +121,11 @@ hapiServer.route({
     handler: (req,h) => h
         .response(controller({path: '/sub', data: "HapiJS", type: ''}))
         .type('text/html'),
+});
+hapiServer.route({
+    method: 'GET',
+    path: '/dynamicPath/{data?}',
+    handler: (req,h) => dynamicPathController({data: req.params.data})
 });
 (async () => {
     await hapiServer.start(); 
