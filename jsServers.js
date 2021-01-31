@@ -28,6 +28,7 @@ var app = require('http').createServer((req,res) => {
             res.writeHead(200, {"Content-Type": 'text/html'});
             return res.end(`
             <div>
+                <img src="https://user-images.githubusercontent.com/56661529/106377860-59c8f400-63e3-11eb-93af-0eda2378dc4f.png" alt="info" />
                 <div>
                     <h3>Node.js</h3>
                     <ul>
