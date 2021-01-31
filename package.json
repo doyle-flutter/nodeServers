@@ -1,0 +1,20 @@
+{
+  "name": "myservers",
+  "version": "1.0.0",
+  "description": "",
+  "main": "jsServers.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@feathersjs/express": "^4.5.11",
+    "@feathersjs/feathers": "^4.5.11",
+    "@hapi/hapi": "^20.1.0",
+    "express": "^4.17.1",
+    "keystone": "^4.2.1",
+    "koa": "^2.13.1",
+    "restify": "^8.5.1"
+  }
+}
