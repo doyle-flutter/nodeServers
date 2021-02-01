@@ -16,6 +16,47 @@ var dynamicPathController = ({data}) => ({data});
 var qsController = ({data}) => ({'qs':data});
 var qs = require('querystring');
 
+/*
+[ DB 준비 ]
+
+(1) 데이터베이스 생성
+  > CREATE DATABASE servers;
+(2) 사용 할 데이터베이스 지정
+  > USE servers
+(4) 테이블 생성
+  > CREATE TABLE datas (
+      id int AUTO_INCREMENT,
+      name TEXT NOT NULL,
+      age TEXT NOT NULL,
+      PRIMARY KEY (id)
+    );
+(5) 데이터 생성(미리 준비)
+   > INSERT INTO datas VALUES (1, 'kkk', '20');
+   > INSERT INTO datas VALUES (2, 'sss', '21');
+   > INSERT INTO datas VALUES (3, 'jjj', '22');
+(*) 생성 된 데이터베이스 확인
+   > SHOW DATABASES;
+(*) 생성 된 데이블 확인
+   > SHOW TABLES;
+(*) 생성 된 데이터 확인
+   > SELECT * FROM datas;
+(*) 동작 중인 MySQL 포트 확인
+   > SHOW GLOBAL VARIABLES LIKE 'PORT';
+*/
+
+var mysql = require('mysql');
+var dbOptions = {
+    host: 'localhost',
+    user: 'root',
+    password: 'abc123456',
+    database: 'servers',
+    port: 3306
+};
+var connection = mysql.createConnection(dbOptions);
+connection.connect();
+var sqlReadAllQuery = "SELECT * FROM datas";
+var sqlHandel = (req,res) => connection.query(sqlReadAllQuery, [],(err, result, f) => res.json(result));
+
 // Node.js
 var fs = require('fs'),
     path = require('path');
@@ -28,6 +69,10 @@ var app = require('http').createServer((req,res) => {
         }
         res.writeHead(200, {'Content-Type':'application/json'});
         return res.end(`data : dy`);
+    }
+    if(req.url === '/db'){
+        res.writeHead(200, {'Content-Type':'application/json'});
+        return connection.query(sqlReadAllQuery, [], (err, results, f) => res.end(JSON.stringify(results)));
     }
     if(req.url.includes('/qs')){
         res.writeHead(200, {'Content-Type':'application/json'});
@@ -60,10 +105,25 @@ expressApp.get('/sub', (req,res) => res.send( controller({path: '/sub', data: "E
 expressApp.get('/dynamicPath/:data', (req,res) => res.json( dynamicPathController({data: req.params.data}) ));
 // expressApp.get('/qs', (req,res) => res.json(qsController({data: req.query.data}))); // 충돌
 expressApp.get('/qs', (req,res) => res.json(qsController({data: qs.parse(req.url.split('?')[1]).data})));
+expressApp.get('/db', sqlHandel)
 expressApp.listen(3030, _ => console.log("ExpressJS :3030"));
 
 
+
 //  [ KoaJS]
+
+/* mysql2.promise() */
+// var mysql2 = require('mysql2');
+// var mysql2Connection = mysql2.createConnection(dbOptions);
+
+/* mysql2 async-await */
+var mysql2Promise = require('mysql2');
+var mysql2PromiseConnectionPool = mysql2Promise.createPool(dbOptions);
+var mysql2Async = async () => {
+    var pool = mysql2PromiseConnectionPool.promise();
+    return await pool.query(sqlReadAllQuery);
+}
+
 var Koa = require('koa'), 
     koaApp = new Koa(),
     KoaRouter = require('koa-router'),
@@ -71,6 +131,21 @@ var Koa = require('koa'),
 koaApp.listen(3040, _ => console.log("KOA :3040"));
 koaRouter.get('/dynamicPath/:data', (ctx, next) => ctx.body = dynamicPathController({data: ctx.params.data}));
 koaRouter.get('/qs', (ctx, next) => ctx.body = qsController({data: ctx.query.data}));
+koaRouter.get('/db', async (ctx, next) => {
+    /* mysql2 */
+    // return mysql2Connection.promise().query(sqlReadAllQuery)
+    //     .then( ([rows,fields]) => {
+    //         console.log(rows)
+    //         return ctx.body = rows;
+    //     })
+    //     .catch(() => {
+    //         return ctx.body = "ERROR"
+    //     });
+
+    /* mysql2 async-await */
+    var [results, f] = await mysql2Async();
+    return ctx.body = results;
+});
 koaApp.use(koaRouter.routes());
 koaApp.use(async ctx => {
     switch(ctx.path){
@@ -95,6 +170,7 @@ feathersApp.get('/', (req,res) => res.json( controller({path: '/', data: "Feathe
 feathersApp.get('/sub', (req,res) => res.send( controller({path: '/sub', data: "FeathersJS", type: ''}) ));
 feathersApp.get('/dynamicPath/:data', (req,res) => res.json( dynamicPathController({data: req.params.data}) ));
 feathersApp.get('/qs', (req,res) => res.json( qsController({data: qs.parse(req.url.split('?')[1]).data}) ));
+feathersApp.get('/db', sqlHandel);
 
 //  [ RestifyJS ]
 var restify = require('restify'),
@@ -107,17 +183,20 @@ restifyServer.get('/sub', (req,res) => {
 });
 restifyServer.get('/dynamicPath/:data', (req,res) => res.json( dynamicPathController({data: req.params.data}) ));
 restifyServer.get('/qs', (req,res) => res.json( qsController({data: qs.parse(req.url.split('?')[1]).data}) ));
+restifyServer.get('/db', sqlHandel);
 
 //  [ KeystoneJS ]
 var keystone = require('keystone');
 const url = require('keystone/fields/types/url/UrlType');
 const { Url } = require('keystone/lib/fieldTypes');
+const { constants } = require('buffer');
 keystone.init({'cookie secret' : 'secure string goes here',port: 3070});
 keystone.set('routes', (app) => {
   app.get('/', (req,res) => res.json( controller({path: '/', data: "KeystoneJS", type: 'json'}) ));
   app.get('/sub', (req,res) => res.send( controller({path: '/sub', data: "KeystoneJS", type: ''}) ));
   app.get('/dynamicPath/:data', (req,res) => res.json( dynamicPathController({data: req.params.data}) ));
   app.get('/qs', (req,res) => res.json(qsController({data: qs.parse(req.url.split('?')[1]).data}) ));
+  app.get('/db', sqlHandel);
 });
 keystone.start();
 
@@ -145,6 +224,14 @@ hapiServer.route({
     method: 'GET',
     path: '/qs',
     handler: (req,h) => qsController({data: req.query.data})
+});
+hapiServer.route({
+    method: 'GET',
+    path: '/db',
+    handler: async (req,h) => {
+        var [results, f] = await mysql2Async();
+        return results;
+    }
 });
 (async () => {
     await hapiServer.start(); 
