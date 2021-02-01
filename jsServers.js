@@ -13,6 +13,8 @@ var controller = ({path, data, type}) => {
     return `<h2>${data}</h2><p>${data}</p>`
 };
 var dynamicPathController = ({data}) => ({data});
+var qsController = ({data}) => ({'qs':data});
+var qs = require('querystring');
 
 // Node.js
 var fs = require('fs'),
@@ -26,6 +28,11 @@ var app = require('http').createServer((req,res) => {
         }
         res.writeHead(200, {'Content-Type':'application/json'});
         return res.end(`data : dy`);
+    }
+    if(req.url.includes('/qs')){
+        res.writeHead(200, {'Content-Type':'application/json'});
+        var data = req.url.split('?')[1].split("=")[1];
+        return res.end( JSON.stringify(qsController({data})) );
     }
     switch(req.url){
         default : {
@@ -46,12 +53,15 @@ app.listen(3020);
 
 
 //  [ ExpressJS ]
-var express = require('express'), 
-    expressApp = express();
-expressApp.listen(3030, _ => console.log("ExpressJS :3030"));
+var express = require('express');
+var expressApp = express();
 expressApp.get('/', (req,res) => res.json( controller({path: '/', data: "ExpressJS", type: 'json'}) ));
 expressApp.get('/sub', (req,res) => res.send( controller({path: '/sub', data: "ExpressJS", type: ''}) ));
 expressApp.get('/dynamicPath/:data', (req,res) => res.json( dynamicPathController({data: req.params.data}) ));
+// expressApp.get('/qs', (req,res) => res.json(qsController({data: req.query.data}))); // 충돌
+expressApp.get('/qs', (req,res) => res.json(qsController({data: qs.parse(req.url.split('?')[1]).data})));
+expressApp.listen(3030, _ => console.log("ExpressJS :3030"));
+
 
 //  [ KoaJS]
 var Koa = require('koa'), 
@@ -60,6 +70,7 @@ var Koa = require('koa'),
     koaRouter = KoaRouter();
 koaApp.listen(3040, _ => console.log("KOA :3040"));
 koaRouter.get('/dynamicPath/:data', (ctx, next) => ctx.body = dynamicPathController({data: ctx.params.data}));
+koaRouter.get('/qs', (ctx, next) => ctx.body = qsController({data: ctx.query.data}));
 koaApp.use(koaRouter.routes());
 koaApp.use(async ctx => {
     switch(ctx.path){
@@ -83,8 +94,9 @@ feathersApp.configure(fExpress.rest());
 feathersApp.get('/', (req,res) => res.json( controller({path: '/', data: "FeathersJS", type: 'json'}) ));
 feathersApp.get('/sub', (req,res) => res.send( controller({path: '/sub', data: "FeathersJS", type: ''}) ));
 feathersApp.get('/dynamicPath/:data', (req,res) => res.json( dynamicPathController({data: req.params.data}) ));
+feathersApp.get('/qs', (req,res) => res.json( qsController({data: qs.parse(req.url.split('?')[1]).data}) ));
 
-//  [ RestifyJS]
+//  [ RestifyJS ]
 var restify = require('restify'),
     restifyServer = restify.createServer();
 restifyServer.listen(3060, _ => console.log('Restify :3060'));
@@ -94,6 +106,7 @@ restifyServer.get('/sub', (req,res) => {
     return res.sendRaw( controller({path: '/sub', data: "RestifyJS", type: ''}) );
 });
 restifyServer.get('/dynamicPath/:data', (req,res) => res.json( dynamicPathController({data: req.params.data}) ));
+restifyServer.get('/qs', (req,res) => res.json( qsController({data: qs.parse(req.url.split('?')[1]).data}) ));
 
 //  [ KeystoneJS ]
 var keystone = require('keystone');
@@ -104,6 +117,7 @@ keystone.set('routes', (app) => {
   app.get('/', (req,res) => res.json( controller({path: '/', data: "KeystoneJS", type: 'json'}) ));
   app.get('/sub', (req,res) => res.send( controller({path: '/sub', data: "KeystoneJS", type: ''}) ));
   app.get('/dynamicPath/:data', (req,res) => res.json( dynamicPathController({data: req.params.data}) ));
+  app.get('/qs', (req,res) => res.json(qsController({data: qs.parse(req.url.split('?')[1]).data}) ));
 });
 keystone.start();
 
@@ -126,6 +140,11 @@ hapiServer.route({
     method: 'GET',
     path: '/dynamicPath/{data?}',
     handler: (req,h) => dynamicPathController({data: req.params.data})
+});
+hapiServer.route({
+    method: 'GET',
+    path: '/qs',
+    handler: (req,h) => qsController({data: req.query.data})
 });
 (async () => {
     await hapiServer.start(); 
