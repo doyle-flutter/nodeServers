@@ -14,12 +14,14 @@
     "@hapi/hapi": "^20.1.0",
     "@koa/router": "^10.0.0",
     "express": "^4.17.1",
+    "http": "0.0.1-security",
     "keystone": "^4.2.1",
     "koa": "^2.13.1",
     "koa-router": "^10.0.0",
     "mysql": "^2.18.1",
     "mysql2": "^2.2.5",
     "restify": "^8.5.1",
+    "socket.io": "^3.1.0",
     "url": "^0.11.0"
   }
 }

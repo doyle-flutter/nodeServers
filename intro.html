@@ -128,5 +128,29 @@
             </ul>
         </div>
     </div>
+    <script src="https://cdn.socket.io/socket.io-3.0.1.min.js"></script>
+    <script>
+        // Node.js
+        var socket = io('http://localhost:3020');
+        socket.on("ready", (data) => console.log(data));
+        // Express        
+        var expressSocket = io('http://localhost:3030');
+        expressSocket.on("ready", (data) => console.log(data));
+        // Koa        
+        var koaSocket = io('http://localhost:3040');
+        koaSocket.on("ready", (data) => console.log(data));
+        // Feathers        
+        var feathersSocket = io('http://localhost:3050');
+        feathersSocket.on("ready", (data) => console.log(data));
+        // Feathers        
+        var restifySocket = io('http://localhost:3060');
+        restifySocket.on("ready", (data) => console.log(data));
+        // Keystone        
+        var keystoneSocket = io('http://localhost:3070');
+        keystoneSocket.on("ready", (data) => console.log(data));
+        // Hapi        
+        var hapiSocket = io('http://localhost:3080');
+        hapiSocket.on("ready", (data) => console.log(data));
+    </script>
 </body>
 </html>

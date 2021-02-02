@@ -12,7 +12,7 @@ var controller = ({path, data, type}) => {
     if(type ==='json') return {path, data};
     return `<h2>${data}</h2><p>${data}</p>`
 };
-var dynamicPathController = ({data}) => ({data});
+var dynamicPathController = ({data})     => ({data});
 var qsController = ({data}) => ({'qs':data});
 var qs = require('querystring');
 
@@ -57,6 +57,13 @@ connection.connect();
 var sqlReadAllQuery = "SELECT * FROM datas";
 var sqlHandel = (req,res) => connection.query(sqlReadAllQuery, [],(err, result, f) => res.json(result));
 
+// Socket.js
+var socket = require('socket.io');
+var socketCorsOptions = {
+    origin: "http://localhost:3020",
+    methods: ["GET", "POST"],
+};
+
 // Node.js
 var fs = require('fs'),
     path = require('path');
@@ -95,26 +102,39 @@ var app = require('http').createServer((req,res) => {
     }
 });
 app.listen(3020);
-
+var io = socket(app,{cors:socketCorsOptions});
+io.on('connect', (soc) => {
+    console.log("Node.js Socket.io");
+    soc.emit('ready', "Hi Node.js Client");
+});
 
 //  [ ExpressJS ]
 var express = require('express');
 var expressApp = express();
+var cors = require('cors');
+expressApp.use(cors());
 expressApp.get('/', (req,res) => res.json( controller({path: '/', data: "ExpressJS", type: 'json'}) ));
 expressApp.get('/sub', (req,res) => res.send( controller({path: '/sub', data: "ExpressJS", type: ''}) ));
 expressApp.get('/dynamicPath/:data', (req,res) => res.json( dynamicPathController({data: req.params.data}) ));
 // expressApp.get('/qs', (req,res) => res.json(qsController({data: req.query.data}))); // 충돌
 expressApp.get('/qs', (req,res) => res.json(qsController({data: qs.parse(req.url.split('?')[1]).data})));
 expressApp.get('/db', sqlHandel)
-expressApp.listen(3030, _ => console.log("ExpressJS :3030"));
+// expressApp.listen(3030, _ => console.log("ExpressJS :3030"));
 
+var expressHttp = require('http').createServer(expressApp);
+var expressIo = socket(expressHttp,{cors: socketCorsOptions});
+expressHttp.listen(3030, _ => console.log("ExpressJS :3030"));
+expressIo.on('connect', (soc) => {
+    console.log("Express Socket.io");
+    soc.emit('ready', "Hi Express Client");
+});
 
 
 //  [ KoaJS]
 
 /* mysql2.promise() */
-// var mysql2 = require('mysql2');
-// var mysql2Connection = mysql2.createConnection(dbOptions);
+var mysql2 = require('mysql2');
+var mysql2Connection = mysql2.createConnection(dbOptions);
 
 /* mysql2 async-await */
 var mysql2Promise = require('mysql2');
@@ -128,7 +148,16 @@ var Koa = require('koa'),
     koaApp = new Koa(),
     KoaRouter = require('koa-router'),
     koaRouter = KoaRouter();
-koaApp.listen(3040, _ => console.log("KOA :3040"));
+// koaApp.listen(3040, _ => console.log("KOA :3040"));
+
+var koaHttp = require('http').createServer(koaApp);
+var koaSocket = socket(koaHttp,{cors: socketCorsOptions});
+koaHttp.listen(3040, _ => console.log("Koa :3040"));
+koaSocket.on('connect', (soc) => {
+    console.log("Koa Socket.io");
+    soc.emit('ready', "Hi Koa Client");
+});
+
 koaRouter.get('/dynamicPath/:data', (ctx, next) => ctx.body = dynamicPathController({data: ctx.params.data}));
 koaRouter.get('/qs', (ctx, next) => ctx.body = qsController({data: ctx.query.data}));
 koaRouter.get('/db', async (ctx, next) => {
@@ -162,7 +191,16 @@ koaApp.use(async ctx => {
 var feathers = require('@feathersjs/feathers'), 
     fExpress = require('@feathersjs/express'), 
     feathersApp = fExpress(feathers());
-feathersApp.listen(3050).on('listening', () => console.log('Feathers :3050'));
+
+var feathersHttp = require('http').createServer(feathersApp);
+var feathersSocket = socket(feathersHttp,{cors: socketCorsOptions});
+feathersHttp.listen(3050, _ => console.log("Feathers :3050"));
+feathersSocket.on('connect', (soc) => {
+    console.log("Feathers Socket.io");
+    soc.emit('ready', "Hi Feathers Client");
+});
+
+// feathersApp.listen(3050).on('listening', () => console.log('Feathers :3050'));
 feathersApp.use(fExpress.json());
 feathersApp.use(fExpress.urlencoded({ extended: true }));
 feathersApp.configure(fExpress.rest());
@@ -175,7 +213,16 @@ feathersApp.get('/db', sqlHandel);
 //  [ RestifyJS ]
 var restify = require('restify'),
     restifyServer = restify.createServer();
-restifyServer.listen(3060, _ => console.log('Restify :3060'));
+// restifyServer.listen(3060, _ => console.log('Restify :3060'));
+
+var restifyHttp = require('http').createServer(restifyServer);
+var restifySocket = socket(restifyHttp,{cors: socketCorsOptions});
+restifyHttp.listen(3060, _ => console.log("Restify :3060"));
+restifySocket.on('connect', (soc) => {
+    console.log("Restify Socket.io");
+    soc.emit('ready', "Hi Restify Client");
+});
+
 restifyServer.get('/', (req,res) => res.json( controller({path: '/', data: "RestifyJS", type: 'json'}) ));
 restifyServer.get('/sub', (req,res) => {
     res.setHeader("Content-Type","text/html");
@@ -190,7 +237,7 @@ var keystone = require('keystone');
 const url = require('keystone/fields/types/url/UrlType');
 const { Url } = require('keystone/lib/fieldTypes');
 const { constants } = require('buffer');
-keystone.init({'cookie secret' : 'secure string goes here',port: 3070});
+var keyserver = keystone.init({'cookie secret' : 'secure string goes here',port: 3070});
 keystone.set('routes', (app) => {
   app.get('/', (req,res) => res.json( controller({path: '/', data: "KeystoneJS", type: 'json'}) ));
   app.get('/sub', (req,res) => res.send( controller({path: '/sub', data: "KeystoneJS", type: ''}) ));
@@ -198,7 +245,18 @@ keystone.set('routes', (app) => {
   app.get('/qs', (req,res) => res.json(qsController({data: qs.parse(req.url.split('?')[1]).data}) ));
   app.get('/db', sqlHandel);
 });
-keystone.start();
+
+keystone.start({
+    onStart: () => {
+        var keystoneHttp = keystone.httpServer;
+        var keystoneSocket = socket(keystoneHttp,{cors: socketCorsOptions});
+        keystoneSocket.on('connect', (soc) => {
+            console.log("Keystone Socket.io");
+            soc.emit('ready', "Hi Keystone Client");
+        });
+        return;
+    }
+});
 
 //  [ HapiJS ]
 var Hapi = require('@hapi/hapi'), 
@@ -232,6 +290,11 @@ hapiServer.route({
         var [results, f] = await mysql2Async();
         return results;
     }
+});
+var hapiSocket = socket(hapiServer.listener ,{cors:socketCorsOptions});
+hapiSocket.on('connect', (soc) => {
+    console.log("Hapi Socket.io");
+    soc.emit('ready', "Hi Hapi Client");
 });
 (async () => {
     await hapiServer.start(); 
