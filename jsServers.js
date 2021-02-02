@@ -237,7 +237,7 @@ var keystone = require('keystone');
 const url = require('keystone/fields/types/url/UrlType');
 const { Url } = require('keystone/lib/fieldTypes');
 const { constants } = require('buffer');
-var keyserver = keystone.init({'cookie secret' : 'secure string goes here',port: 3070});
+keystone.init({'cookie secret' : 'secure string goes here',port: 3070});
 keystone.set('routes', (app) => {
   app.get('/', (req,res) => res.json( controller({path: '/', data: "KeystoneJS", type: 'json'}) ));
   app.get('/sub', (req,res) => res.send( controller({path: '/sub', data: "KeystoneJS", type: ''}) ));
